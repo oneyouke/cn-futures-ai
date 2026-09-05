@@ -216,3 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local futures research data and output
+/data/
+/results/
+/demo_results/
+contract.local.json
+.env.*
