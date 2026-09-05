@@ -1,0 +1,18 @@
+{
+  "capital": 100000,
+  "multiplier": 10,
+  "tick": 1,
+  "slippage_ticks": 1,
+  "margin_rate": 0.15,
+  "max_margin_fraction": 0.3,
+  "open_fixed": 3,
+  "close_fixed": 3,
+  "close_today_fixed": 3,
+  "open_rate": 0,
+  "close_rate": 0,
+  "close_today_rate": 0,
+  "fast": 5,
+  "slow": 20,
+  "stop_loss_fraction": 0.02,
+  "daily_loss_fraction": 0.02
+}
