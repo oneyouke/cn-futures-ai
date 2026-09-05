@@ -53,9 +53,9 @@ def export_result(result, parent):
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title('期货研究台 · 国内商品期货')
-        self.geometry('1120x760')
-        self.minsize(900, 640)
+        self.title('期货研究台 · Futures Desk 0.3')
+        self.geometry('1280x840')
+        self.minsize(1080, 760)
         self.configure(bg='#eef2f6')
         self.result = None
         self.mailbox = queue.Queue()
@@ -67,14 +67,28 @@ class App(tk.Tk):
         style.configure('.', font=('Microsoft YaHei UI', 10))
         style.configure('TFrame', background='#eef2f6')
         style.configure('TLabel', background='#eef2f6', foreground='#203047')
-        style.configure('TButton', padding=(12, 7))
+        style.configure('TButton', padding=(14, 9), background='#e3edf3', foreground='#163b51', borderwidth=0)
+        style.configure('Primary.TButton', background='#087f8c', foreground='white')
+        style.map('Primary.TButton', background=[('active','#096c78'),('disabled','#b9c9d0')])
+        style.configure('TNotebook.Tab', padding=(20,10))
+        style.configure('TEntry', padding=7)
         style.configure('Treeview', rowheight=28, font=('Microsoft YaHei UI', 9))
         style.configure('Treeview.Heading', font=('Microsoft YaHei UI', 9, 'bold'))
         head = tk.Frame(self, bg='#13243a', padx=24, pady=18)
         head.pack(fill='x')
         tk.Label(head, text='期货研究台', bg='#13243a', fg='white', font=('Microsoft YaHei UI', 23, 'bold')).pack(side='left')
-        tk.Label(head, text='离线回测  /  v0.2', bg='#13243a', fg='#a7c9df', font=('Microsoft YaHei UI', 11)).pack(side='right')
-        main = ttk.Frame(self, padding=20)
+        tk.Label(head, text='离线研究  /  v0.3', bg='#13243a', fg='#a7c9df', font=('Microsoft YaHei UI', 11)).pack(side='right')
+        side = tk.Frame(self, bg='#13243a', width=178)
+        side.pack(side='left', fill='y')
+        side.pack_propagate(False)
+        tk.Label(side, text='工作空间', bg='#13243a', fg='#8199b0', font=('Microsoft YaHei UI',10)).pack(anchor='w', padx=22, pady=(24,14))
+        self.nav = []
+        for i, title in enumerate(['回测总览', '成交记录', '使用指南']):
+            button = tk.Button(side, text=title, anchor='w', padx=18, pady=12, bd=0, cursor='hand2', bg='#13243a', fg='#afc2d4', font=('Microsoft YaHei UI',11), command=lambda idx=i:self.tabs.select(idx))
+            button.pack(fill='x', padx=8, pady=3)
+            self.nav.append(button)
+        tk.Label(side, text='恒力期货\n接口待申请\n\n本地离线运行\nAI 模型未接入', justify='left', bg='#13243a', fg='#91a9be', font=('Microsoft YaHei UI',10)).pack(side='bottom',anchor='w',padx=22,pady=26)
+        main = ttk.Frame(self, padding=22)
         main.pack(fill='both', expand=True)
         ttk.Label(main, text='恒力期货接入待配置 · 当前不连接账户、不发送订单；AI 模型尚未接入。').pack(anchor='w', pady=(0, 12))
         for label, var in [('行情 CSV', self.csv_path), ('合约 JSON', self.config_path)]:
@@ -87,26 +101,38 @@ class App(tk.Tk):
         actions.pack(fill='x', pady=12)
         self.demo_btn = ttk.Button(actions, text='运行演示', command=lambda: self.start(True))
         self.demo_btn.pack(side='left')
-        self.run_btn = ttk.Button(actions, text='回测所选行情', command=lambda: self.start(False))
+        self.run_btn = ttk.Button(actions, text='开始回测', style='Primary.TButton', command=lambda: self.start(False))
         self.run_btn.pack(side='left', padx=8)
         ttk.Button(actions, text='保存配置示例', command=self.save_config).pack(side='left')
         self.export_btn = ttk.Button(actions, text='导出结果', command=self.export, state='disabled')
         self.export_btn.pack(side='right')
         self.metrics = tk.StringVar(value='运行回测后显示：期末权益 · 净收益 · 最大回撤 · 成交笔数')
-        tk.Label(main, textvariable=self.metrics, bg='white', fg='#12465b', font=('Microsoft YaHei UI', 13, 'bold'), pady=16, padx=12, anchor='w').pack(fill='x')
+        self.metric_values = [tk.StringVar(value='—') for _ in range(4)]
+        cards = ttk.Frame(main)
+        cards.pack(fill='x', pady=(0,10))
+        for i, (label, hint) in enumerate([('期末权益 / 元','回测结束后的资金权益'),('净收益 / 元','已扣手续费与滑点'),('最大回撤','按收盘权益计算'),('成交笔数','开仓、平仓分别计数')]):
+            cards.columnconfigure(i,weight=1,uniform='card')
+            card=tk.Frame(cards,bg='white',padx=14,pady=14,highlightbackground='#dde6ef',highlightthickness=1)
+            card.grid(row=0,column=i,sticky='nsew',padx=(0,8 if i<3 else 0))
+            tk.Label(card,text=label,bg='white',fg='#73859a',font=('Microsoft YaHei UI',10)).pack(anchor='w')
+            tk.Label(card,textvariable=self.metric_values[i],bg='white',fg='#14374a',font=('Segoe UI',22,'bold')).pack(anchor='w',pady=7)
+            tk.Label(card,text=hint,bg='white',fg='#8899aa',font=('Microsoft YaHei UI',8)).pack(anchor='w')
         self.mode = tk.StringVar(value='演示数据和示例参数不代表真实合约或历史表现。')
         ttk.Label(main, textvariable=self.mode).pack(anchor='w', pady=8)
-        tabs = ttk.Notebook(main)
+        tabs = self.tabs = ttk.Notebook(main)
         tabs.pack(fill='both', expand=True)
         chart_page = ttk.Frame(tabs)
         tabs.add(chart_page, text='  权益曲线  ')
         self.canvas = tk.Canvas(chart_page, bg='white', highlightthickness=0)
         self.canvas.pack(fill='both', expand=True)
         self.canvas.bind('<Configure>', lambda e: self.draw())
+        self.canvas.bind('<Motion>', self.chart_hover)
+        self.canvas.bind('<Leave>', lambda e:self.canvas.delete('hover'))
         table_page = ttk.Frame(tabs)
         tabs.add(table_page, text='  成交记录  ')
         cols = ('timestamp','action','side','price','fee','realized_pnl')
         self.table = ttk.Treeview(table_page, columns=cols, show='headings')
+        self.table.tag_configure('even',background='#f1f6fa')
         for col, label in zip(cols, ['时间','开平','买卖','价格','手续费','已实现盈亏（未扣费）']):
             self.table.heading(col, text=label)
             self.table.column(col, width=170 if col == 'timestamp' else 120, minwidth=80)
@@ -125,9 +151,39 @@ class App(tk.Tk):
                 '模型限制：信号及风控在收盘检查，下一开盘执行；末根收盘清仓。\n'
                 '未模拟涨跌停排队、强平、结算、换月和真实交易日历。\n'
                 '止损不保证最大亏损，结果只用于研究。')
-        ttk.Label(help_page, text=text, wraplength=800, justify='left').pack(anchor='nw')
-        ttk.Label(main, textvariable=self.status).pack(anchor='w', pady=(10, 0))
+        help_text=tk.Text(help_page,wrap='word',font=('Microsoft YaHei UI',10),bg='white',fg='#34465a',relief='flat',padx=18,pady=14)
+        help_scroll=ttk.Scrollbar(help_page,command=help_text.yview)
+        help_text.configure(yscrollcommand=help_scroll.set)
+        help_scroll.pack(side='right',fill='y')
+        help_text.pack(fill='both',expand=True)
+        help_text.insert('1.0',text+'\n\n将鼠标移到权益曲线上，可查看对应时间和权益。')
+        help_text.configure(state='disabled')
+        tabs.bind('<<NotebookTabChanged>>',lambda e:self.sync_nav())
+        self.sync_nav()
+        self.progress=ttk.Progressbar(main,mode='indeterminate')
+        self.progress.pack(fill='x',pady=(10,0))
+        ttk.Label(main, textvariable=self.status, wraplength=820).pack(anchor='w', pady=(10, 0))
         self.after(100, self.poll)
+
+    def sync_nav(self):
+        selected=self.tabs.index(self.tabs.select())
+        for i,button in enumerate(self.nav):
+            button.configure(bg='#224159' if i==selected else '#13243a',fg='white' if i==selected else '#afc2d4')
+
+    def chart_hover(self,event):
+        c=self.canvas
+        c.delete('hover')
+        if not self.result or c.winfo_width()<160 or c.winfo_height()<100:
+            return
+        curve=self.result[2]
+        fraction=max(0,min(1,(event.x-90)/max(c.winfo_width()-114,1)))
+        index=round(fraction*len(curve))
+        equity=self.result[0]['initial_capital'] if index==0 else curve[index-1]['equity']
+        date='初始资金' if index==0 else curve[index-1]['timestamp']
+        x=90+(c.winfo_width()-114)*index/len(curve)
+        c.create_line(x,24,x,c.winfo_height()-41,fill='#8badb7',dash=(3,3),tags='hover')
+        c.create_rectangle(94,2,c.winfo_width()-24,23,fill='white',outline='',tags='hover')
+        c.create_text(100,12,text=f'{date}  |  权益 ¥{equity:,.2f}',anchor='w',fill='#087f8c',tags='hover')
 
     def pick(self, var):
         ext = '*.csv' if var is self.csv_path else '*.json'
@@ -153,6 +209,9 @@ class App(tk.Tk):
             return
         self.result = None
         self.metrics.set('正在计算…')
+        for value in self.metric_values:
+            value.set('—')
+        self.progress.start(12)
         self.mode.set('合成行情演示' if synthetic else '所选 CSV 回测')
         self.table.delete(*self.table.get_children())
         self.draw()
@@ -169,6 +228,7 @@ class App(tk.Tk):
     def poll(self):
         try:
             ok, payload = self.mailbox.get_nowait()
+            self.progress.stop()
         except queue.Empty:
             pass
         else:
@@ -185,11 +245,13 @@ class App(tk.Tk):
     def show_result(self, result):
         self.result = result
         s, trades, curve = result
+        for var, value in zip(self.metric_values,[f"{s['final_equity']:,.2f}", f"{s['net_pnl']:+,.2f}", f"{s['max_drawdown_fraction']:.2%}",str(s['fills'])]):
+            var.set(value)
         self.metrics.set(f"期末权益 ¥{s['final_equity']:,.2f}    净收益 ¥{s['net_pnl']:,.2f}    最大回撤 {s['max_drawdown_fraction']:.2%}    成交 {s['fills']} 笔")
         self.mode.set('合成行情 · 演示参数 · 不代表真实表现' if s['synthetic_data'] else '导入行情 · 使用所选合约配置 · 结果仅供研究')
         self.table.delete(*self.table.get_children())
-        for t in trades[:5000]:
-            self.table.insert('', 'end', values=(t['timestamp'], {'open':'开仓','close':'平仓','close_today':'平今'}[t['action']], '买' if t['side'] > 0 else '卖', f"{t['price']:.2f}", f"{t['fee']:.2f}", f"{t['realized_pnl']:.2f}"))
+        for idx, t in enumerate(trades[:5000]):
+            self.table.insert('', 'end', tags=('even',) if idx%2==0 else (), values=(t['timestamp'], {'open':'开仓','close':'平仓','close_today':'平今'}[t['action']], '买' if t['side'] > 0 else '卖', f"{t['price']:.2f}", f"{t['fee']:.2f}", f"{t['realized_pnl']:.2f}"))
         self.status.set(f'完成 · {len(curve):,} 根 K 线 · 成交表最多显示 5,000 笔，导出包含全部记录')
         self.export_btn.configure(state='normal')
         self.draw()
@@ -244,6 +306,13 @@ def smoke_test(marker):
     app.show_result(result)
     app.update()
     assert app.table.get_children() and app.canvas.find_all()
+    assert app.metric_values[3].get() == str(result[0]['fills'])
+    app.tabs.select(1); app.update()
+    assert app.tabs.index(app.tabs.select()) == 1
+    app.tabs.select(0); app.update()
+    from types import SimpleNamespace
+    app.chart_hover(SimpleNamespace(x=200))
+    assert app.canvas.find_withtag('hover')
     with tempfile.TemporaryDirectory() as tmp:
         folder = export_result(result, tmp)
         assert (folder / 'summary.json').exists()
