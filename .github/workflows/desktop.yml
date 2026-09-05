@@ -11,7 +11,10 @@ jobs:
         with:
           python-version: '3.12'
       - run: python futures.py --test
+      - run: python -m pip install pillow
       - name: Test desktop, CSV import and export
+        env:
+          DESKTOP_SCREENSHOT: desktop-preview.png
         run: python desktop.py --smoke-test source-smoke.txt
       - run: python -m pip install pyinstaller==6.22.2
       - run: python -m PyInstaller --noconfirm --clean --onefile --windowed --name FuturesDesk desktop.py
@@ -30,5 +33,11 @@ jobs:
         with:
           name: FuturesDesk-Windows-x64
           path: dist/FuturesDesk.exe
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Desktop-preview
+          path: desktop-preview.png
           if-no-files-found: error
           retention-days: 30
